@@ -1,0 +1,72 @@
+import QtQuick 2.6
+import Sailfish.Silica 1.0
+import Qt.labs.folderlistmodel 2.1
+
+Page {
+    id: page
+    property string folder: StandardPaths.home
+    property string search: ""
+
+    SilicaListView {
+        id: list
+        anchors.fill: parent
+        header: Column {
+            width: list.width
+            PageHeader { title: "Open document" }
+            SearchField {
+                id: sf
+                width: parent.width
+                placeholderText: "Type to search"
+                inputMethodHints: Qt.ImhNoAutoUppercase
+                onTextChanged: page.search = text.trim()
+            }
+            Label {
+                x: Theme.horizontalPageMargin
+                width: parent.width - 2*Theme.horizontalPageMargin
+                text: folderModel.folder.toString().replace("file://","")
+                color: Theme.secondaryColor
+                font.pixelSize: Theme.fontSizeExtraSmall
+                truncationMode: TruncationMode.Fade
+            }
+        }
+
+        FolderListModel {
+            id: folderModel
+            folder: "file://" + page.folder
+            showDirs: true
+            showDotAndDotDot: true
+            showOnlyReadable: true
+            sortField: FolderListModel.Name
+            caseSensitive: false
+            nameFilters: page.search.length > 0
+                ? ["*" + page.search + "*.pdf", "*" + page.search + "*.PDF",
+                   "*" + page.search + "*.djvu", "*" + page.search + "*.txt", "*" + page.search + "*.tif*"]
+                : ["*.pdf","*.PDF","*.djvu","*.txt","*.tif","*.tiff"]
+        }
+
+        // Directories always shown (search filters files only)
+        model: folderModel
+
+        delegate: ListItem {
+            id: item
+            contentHeight: Theme.itemSizeSmall
+            Label {
+                x: Theme.horizontalPageMargin
+                anchors.verticalCenter: parent.verticalCenter
+                width: parent.width - 2*Theme.horizontalPageMargin
+                text: (fileIsDir ? "\u{1F4C1}  " : "") + fileName
+                truncationMode: TruncationMode.Fade
+                color: item.highlighted ? Theme.highlightColor : Theme.primaryColor
+            }
+            onClicked: {
+                if (fileIsDir) {
+                    page.search = ""
+                    page.folder = filePath
+                } else {
+                    pageStack.push(Qt.resolvedUrl("ReaderPage.qml"), { path: filePath })
+                }
+            }
+        }
+        VerticalScrollDecorator {}
+    }
+}
