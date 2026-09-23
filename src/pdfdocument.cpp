@@ -55,19 +55,24 @@ bool PdfDocument::unlock(const QString &password)
     return true;
 }
 
-QImage PdfDocument::renderPage(int page, qreal scale)
+QImage PdfDocument::renderPage(int page, qreal scale, int rotation, bool inverted)
 {
     QMutexLocker lock(&m_mutex);
     if (!m_doc || page < 1 || page > m_pageCount) return QImage();
     Poppler::Page *p = m_doc->page(page - 1);
     if (!p) return QImage();
     qreal dpi = 72.0 * scale;
-    QImage img = p->renderToImage(dpi, dpi);
+    Poppler::Page::Rotation rot = Poppler::Page::Rotate0;
+    if (rotation == 90) rot = Poppler::Page::Rotate90;
+    else if (rotation == 180) rot = Poppler::Page::Rotate180;
+    else if (rotation == 270) rot = Poppler::Page::Rotate270;
+    QImage img = p->renderToImage(dpi, dpi, -1, -1, -1, -1, rot);
     delete p;
+    if (inverted && !img.isNull()) img.invertPixels(QImage::InvertRgb);
     return img;
 }
 
-QSizeF PdfDocument::pageSizePoints(int page)
+QSizeF PdfDocument::pageSizePoints(int page, int rotation)
 {
     QMutexLocker lock(&m_mutex);
     if (!m_doc || page < 1 || page > m_pageCount) return QSizeF();
@@ -75,6 +80,7 @@ QSizeF PdfDocument::pageSizePoints(int page)
     if (!p) return QSizeF();
     QSizeF s = p->pageSizeF();
     delete p;
+    if (rotation == 90 || rotation == 270) return QSizeF(s.height(), s.width());
     return s;
 }
 

@@ -8,4 +8,8 @@ ApplicationWindow {
     initialPage: Component { FilePickerPage {} }
     cover: Component { CoverPage {} }
     allowedOrientations: Orientation.All
+    Component.onCompleted: {
+        if (settings.loadLastDoc && settings.lastDoc.length > 0)
+            pageStack.push(Qt.resolvedUrl("pages/ReaderPage.qml"), { path: settings.lastDoc })
+    }
 }

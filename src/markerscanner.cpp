@@ -5,8 +5,9 @@
 
 MarkerScanner::MarkerScanner(QObject *parent) : QObject(parent), m_scanned(false) {}
 
-void MarkerScanner::scan(PdfDocument *doc)
+void MarkerScanner::scan(QObject *docObj)
 {
+    PdfDocument *doc = qobject_cast<PdfDocument *>(docObj);
     m_barMap.clear(); m_letterMap.clear(); m_labels.clear(); m_pages.clear();
     m_scanned = false;
     if (!doc || !doc->loaded()) { emit scanned(); return; }

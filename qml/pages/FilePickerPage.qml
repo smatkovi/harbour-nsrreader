@@ -4,7 +4,7 @@ import Qt.labs.folderlistmodel 2.1
 
 Page {
     id: page
-    property string folder: StandardPaths.home
+    property string folder: settings.lastOpenDir.length > 0 ? settings.lastOpenDir : StandardPaths.home
     property string search: ""
 
     SilicaListView {
@@ -61,6 +61,7 @@ Page {
                 if (fileIsDir) {
                     page.search = ""
                     page.folder = filePath
+                    settings.lastOpenDir = filePath
                 } else {
                     pageStack.push(Qt.resolvedUrl("ReaderPage.qml"), { path: filePath })
                 }

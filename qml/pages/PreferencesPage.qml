@@ -11,9 +11,7 @@ Page {
             PageHeader { title: "Preferences" }
             Slider {
                 width: parent.width
-                minimumValue: 0
-                maximumValue: 8
-                stepSize: 1
+                minimumValue: 0; maximumValue: 8; stepSize: 1
                 value: settings.renderAhead
                 label: "Pre-render pages"
                 valueText: value
@@ -23,6 +21,23 @@ Page {
                 text: "Fit new documents to width"
                 checked: settings.autoFitWidth
                 onCheckedChanged: settings.autoFitWidth = checked
+            }
+            TextSwitch {
+                text: "Inverted colours"
+                description: "Light text on dark background"
+                checked: settings.invertedColors
+                onCheckedChanged: settings.invertedColors = checked
+            }
+            TextSwitch {
+                text: "Fullscreen"
+                description: "Hide page counter and marker bar"
+                checked: settings.fullscreen
+                onCheckedChanged: settings.fullscreen = checked
+            }
+            TextSwitch {
+                text: "Open last document on start"
+                checked: settings.loadLastDoc
+                onCheckedChanged: settings.loadLastDoc = checked
             }
         }
     }

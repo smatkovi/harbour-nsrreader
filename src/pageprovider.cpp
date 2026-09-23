@@ -13,7 +13,9 @@ QImage PageProvider::requestImage(const QString &id, QSize *size, const QSize &r
     int page = parts.at(0).toInt();
     qreal scale = parts.at(1).toInt() / 1000.0;
     if (scale <= 0) scale = 1.0;
-    QImage img = m_doc->renderPage(page, scale);
+    int rotation = (parts.size() > 2) ? parts.at(2).toInt() : 0;
+    bool inverted = (parts.size() > 3) ? (parts.at(3).toInt() != 0) : false;
+    QImage img = m_doc->renderPage(page, scale, rotation, inverted);
     if (size) *size = img.size();
     return img;
 }

@@ -18,7 +18,7 @@ class MarkerScanner : public QObject
 public:
     explicit MarkerScanner(QObject *parent = 0);
 
-    Q_INVOKABLE void scan(PdfDocument *doc);
+    Q_INVOKABLE void scan(QObject *doc);
     Q_INVOKABLE int jumpToBar(int bar) const;        // -> page (nearest lower), 0 if none
     Q_INVOKABLE int jumpToLetter(const QString &c) const;
 

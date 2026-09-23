@@ -10,6 +10,9 @@ Page {
     property string navBuffer: ""
     property bool navIsBar: false
     property string notice: ""
+    property int rotation: 0
+    property bool inverted: settings.invertedColors
+    property bool fullscreen: settings.fullscreen
 
     property bool annotate: false
     property int tool: 0
@@ -18,13 +21,16 @@ Page {
     allowedOrientations: Orientation.All
     focus: true
 
-    function pointsW() { var s = pdf.pageSizePoints(currentPage); return (s && s.width > 0) ? s.width : 595 }
-    function pointsH() { var s = pdf.pageSizePoints(currentPage); return (s && s.height > 0) ? s.height : 842 }
+    function pointsW() { var s = pdf.pageSizePoints(currentPage, rotation); return (s && s.width > 0) ? s.width : 595 }
+    function pointsH() { var s = pdf.pageSizePoints(currentPage, rotation); return (s && s.height > 0) ? s.height : 842 }
     function baseScale() { return reader.width / pointsW() }
     function effScale() { return baseScale() * zoom }
     function pxW() { return Math.round(pointsW() * effScale()) }
     function pxH() { return Math.round(pointsH() * effScale()) }
-    function srcFor(pg) { return "image://pdf/" + pg + "/" + Math.round(effScale() * 1000) }
+    function srcFor(pg) { return "image://pdf/" + pg + "/" + Math.round(effScale() * 1000)
+                                 + "/" + reader.rotation + "/" + (reader.inverted ? 1 : 0) }
+    function rotateBy(d) { reader.rotation = ((reader.rotation + d) % 360 + 360) % 360;
+                           settings.setLastRotation(reader.path, reader.rotation) }
 
     function goToPage(pg) {
         if (pg < 1) pg = 1
@@ -39,11 +45,15 @@ Page {
 
     Component.onCompleted: { pdf.source = path; anns.setDocument(path) }
     onCurrentPageChanged: settings.setLastPage(reader.path, currentPage)
+    onZoomChanged: settings.setLastZoom(reader.path, zoom)
     Connections {
         target: pdf
         onLoadedChanged: {
             if (!pdf.loaded) return
             scanner.scan(pdf)
+            reader.rotation = settings.lastRotation(reader.path)
+            reader.zoom = settings.lastZoom(reader.path)
+            settings.lastDoc = reader.path
             goToPage(settings.lastPage(reader.path))
             if (scanner.markerLabels.length > 0) reader.showNotice("Text jumps: " + scanner.markerLabels.join(", "))
             else if (scanner.hasBars) reader.showNotice("Bar jump available")
@@ -79,6 +89,12 @@ Page {
                 MenuItem { text: "Go to page"; onClicked: reader.askPage() }
                 MenuItem { text: "Fit page"; onClicked: reader.fitPage() }
                 MenuItem { text: "Fit width"; onClicked: reader.zoom = 1.0 }
+                MenuItem { text: reader.fullscreen ? "Show controls" : "Fullscreen"
+                    onClicked: { reader.fullscreen = !reader.fullscreen; settings.fullscreen = reader.fullscreen } }
+                MenuItem { text: reader.inverted ? "Normal colours" : "Invert colours"
+                    onClicked: { reader.inverted = !reader.inverted; settings.invertedColors = reader.inverted } }
+                MenuItem { text: "Rotate right"; onClicked: reader.rotateBy(90) }
+                MenuItem { text: "Rotate left"; onClicked: reader.rotateBy(-90) }
                 MenuItem { text: "Preferences"; onClicked: pageStack.push(Qt.resolvedUrl("PreferencesPage.qml")) }
             }
 
@@ -320,7 +336,7 @@ Page {
         color: Qt.rgba(0, 0, 0, 0.55); radius: 6
         width: pl.width + Theme.paddingMedium * 2
         height: pl.height + Theme.paddingSmall
-        visible: pdf.loaded
+        visible: pdf.loaded && !reader.fullscreen
         Label { id: pl; anchors.centerIn: parent; color: "white"
             text: reader.currentPage + " / " + pdf.pageCount; font.pixelSize: Theme.fontSizeSmall }
     }
@@ -347,7 +363,7 @@ Page {
     Row {
         anchors { bottom: parent.bottom; horizontalCenter: parent.horizontalCenter; bottomMargin: Theme.paddingMedium }
         spacing: Theme.paddingSmall
-        visible: !reader.annotate && scanner.scannedOk && scanner.markerLabels.length > 0
+        visible: !reader.annotate && !reader.fullscreen && scanner.scannedOk && scanner.markerLabels.length > 0
         Repeater {
             model: scanner.markerLabels
             Rectangle {

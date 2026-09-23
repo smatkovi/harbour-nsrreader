@@ -28,9 +28,9 @@ public:
     bool locked() const { return m_locked; }
 
     // Render page (1-based) at the given scale (1.0 == 72dpi == PDF points). Cached-friendly.
-    QImage renderPage(int page, qreal scale);
+    QImage renderPage(int page, qreal scale, int rotation, bool inverted);
     // Page size in PDF points (72dpi).
-    Q_INVOKABLE QSizeF pageSizePoints(int page);
+    Q_INVOKABLE QSizeF pageSizePoints(int page, int rotation = 0);
     // Full text of a page (1-based), cheap physical-layout extraction.
     Q_INVOKABLE QString textForPage(int page);
 
