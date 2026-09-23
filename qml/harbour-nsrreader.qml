@@ -1,11 +1,11 @@
 import QtQuick 2.6
 import Sailfish.Silica 1.0
 import "pages"
+import "cover"
 
 ApplicationWindow {
     id: app
-    property string openPath: ""
     initialPage: Component { FilePickerPage {} }
-    cover: Component { Qt.resolvedUrl("cover/CoverPage.qml") }
+    cover: Component { CoverPage {} }
     allowedOrientations: Orientation.All
 }

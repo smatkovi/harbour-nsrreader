@@ -37,7 +37,6 @@ Page {
             showDotAndDotDot: true
             showOnlyReadable: true
             sortField: FolderListModel.Name
-            caseSensitive: false
             nameFilters: page.search.length > 0
                 ? ["*" + page.search + "*.pdf", "*" + page.search + "*.PDF",
                    "*" + page.search + "*.djvu", "*" + page.search + "*.txt", "*" + page.search + "*.tif*"]
@@ -54,7 +53,7 @@ Page {
                 x: Theme.horizontalPageMargin
                 anchors.verticalCenter: parent.verticalCenter
                 width: parent.width - 2*Theme.horizontalPageMargin
-                text: (fileIsDir ? "\u{1F4C1}  " : "") + fileName
+                text: fileIsDir ? fileName + "/" : fileName
                 truncationMode: TruncationMode.Fade
                 color: item.highlighted ? Theme.highlightColor : Theme.primaryColor
             }

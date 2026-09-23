@@ -4,3 +4,8 @@ X-Nemo-Application-Type=silica-qt5
 Icon=harbour-nsrreader
 Exec=harbour-nsrreader
 Name=NSR Reader
+
+[X-Sailjail]
+OrganizationName=harbour-nsrreader
+ApplicationName=harbour-nsrreader
+Permissions=UserDirs;RemovableMedia
