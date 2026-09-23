@@ -10,6 +10,10 @@ Page {
     SilicaListView {
         id: list
         anchors.fill: parent
+        PullDownMenu {
+            MenuItem { text: "About"; onClicked: pageStack.push(Qt.resolvedUrl("AboutPage.qml")) }
+            MenuItem { text: "Preferences"; onClicked: pageStack.push(Qt.resolvedUrl("PreferencesPage.qml")) }
+        }
         header: Column {
             width: list.width
             PageHeader { title: "Open document" }

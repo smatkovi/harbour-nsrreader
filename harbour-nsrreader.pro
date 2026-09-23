@@ -29,6 +29,7 @@ DISTFILES += \
     qml/pages/PickListDialog.qml \
     qml/pages/PreferencesPage.qml \
     qml/pages/TextReaderPage.qml \
+    qml/pages/AboutPage.qml \
     qml/cover/CoverPage.qml \
     rpm/harbour-nsrreader.spec \
     harbour-nsrreader.desktop

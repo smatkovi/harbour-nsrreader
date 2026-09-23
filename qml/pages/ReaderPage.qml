@@ -13,6 +13,7 @@ Page {
     property int rotation: 0
     property bool inverted: settings.invertedColors
     property bool fullscreen: settings.fullscreen
+    property bool controlsShown: !settings.fullscreen
     property real renderZoom: 1.0
     property string shownSource: ""
     property real shownScale: 1.0
@@ -44,6 +45,7 @@ Page {
         flick.contentX = 0; flick.contentY = 0
         annCanvas.requestPaint()
     }
+    onFullscreenChanged: controlsShown = !fullscreen
     function fitPage() { reader.zoom = (reader.height / pointsH()) / (reader.width / pointsW()) }
     function showNotice(t) { reader.notice = t; noticeTimer.restart() }
     Timer { id: noticeTimer; interval: 4000; onTriggered: reader.notice = "" }
@@ -105,6 +107,7 @@ Page {
                 MenuItem { text: "Rotate right"; onClicked: reader.rotateBy(90) }
                 MenuItem { text: "Rotate left"; onClicked: reader.rotateBy(-90) }
                 MenuItem { text: "Preferences"; onClicked: pageStack.push(Qt.resolvedUrl("PreferencesPage.qml")) }
+                MenuItem { text: "About"; onClicked: pageStack.push(Qt.resolvedUrl("AboutPage.qml")) }
             }
 
             Item {
@@ -383,7 +386,7 @@ Page {
         color: Qt.rgba(0, 0, 0, 0.55); radius: 6
         width: pl.width + Theme.paddingMedium * 2
         height: pl.height + Theme.paddingSmall
-        visible: pdf.loaded && !reader.fullscreen
+        visible: pdf.loaded && reader.controlsShown
         Label { id: pl; anchors.centerIn: parent; color: "white"
             text: reader.currentPage + " / " + pdf.pageCount; font.pixelSize: Theme.fontSizeSmall }
     }
@@ -407,20 +410,87 @@ Page {
         Label { id: ntLbl; anchors.centerIn: parent; color: "white"; text: reader.notice; font.pixelSize: Theme.fontSizeSmall }
     }
 
-    Row {
-        anchors { bottom: parent.bottom; horizontalCenter: parent.horizontalCenter; bottomMargin: Theme.paddingMedium }
+    Column {
+        id: bottomStack
+        anchors { bottom: parent.bottom; horizontalCenter: parent.horizontalCenter; bottomMargin: Theme.paddingSmall }
         spacing: Theme.paddingSmall
-        visible: !reader.annotate && !reader.fullscreen && scanner.scannedOk && scanner.markerLabels.length > 0
-        Repeater {
-            model: scanner.markerLabels
-            Rectangle {
-                width: mlab.width + Theme.paddingLarge
-                height: mlab.height + Theme.paddingSmall
-                radius: 6; color: "#0088cd"
-                Label { id: mlab; anchors.centerIn: parent; text: modelData; color: "white"; font.pixelSize: Theme.fontSizeSmall }
-                MouseArea { anchors.fill: parent; onClicked: reader.goToPage(scanner.markerPages[index]) }
+        visible: !reader.annotate && reader.controlsShown
+
+        Row {
+            anchors.horizontalCenter: parent.horizontalCenter
+            spacing: Theme.paddingSmall
+            visible: scanner.scannedOk && scanner.markerLabels.length > 0
+            Repeater {
+                model: scanner.markerLabels
+                Rectangle {
+                    width: mlab.width + Theme.paddingLarge
+                    height: mlab.height + Theme.paddingSmall
+                    radius: 6; color: "#0088cd"
+                    Label { id: mlab; anchors.centerIn: parent; text: modelData; color: "white"; font.pixelSize: Theme.fontSizeSmall }
+                    MouseArea { anchors.fill: parent; onClicked: reader.goToPage(scanner.markerPages[index]) }
+                }
             }
         }
+
+        // navigation / zoom controls
+        Row {
+            anchors.horizontalCenter: parent.horizontalCenter
+            spacing: Theme.paddingSmall
+            visible: pdf.loaded
+
+            Repeater {
+                model: [
+                    { "t": "\u25C0", "a": "prev" },
+                    { "t": "\u2212", "a": "zoomout" },
+                    { "t": "", "a": "zoomlabel" },
+                    { "t": "+", "a": "zoomin" },
+                    { "t": "\u25B6", "a": "next" }
+                ]
+                Rectangle {
+                    width: Math.max(clab.width + Theme.paddingLarge, Theme.itemSizeSmall)
+                    height: Theme.itemSizeExtraSmall
+                    radius: 6
+                    color: modelData.a === "zoomlabel" ? Qt.rgba(0, 0, 0, 0.55) : Qt.rgba(0, 0, 0, 0.75)
+                    Label {
+                        id: clab
+                        anchors.centerIn: parent
+                        color: "white"
+                        font.pixelSize: Theme.fontSizeSmall
+                        text: modelData.a === "zoomlabel"
+                              ? Math.round(reader.zoom * 100) + "%"
+                              : modelData.t
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        enabled: modelData.a !== "zoomlabel"
+                        onClicked: {
+                            if (modelData.a === "prev") reader.goToPage(reader.currentPage - 1)
+                            else if (modelData.a === "next") reader.goToPage(reader.currentPage + 1)
+                            else if (modelData.a === "zoomin") reader.zoom = Math.min(6, reader.zoom * 1.25)
+                            else if (modelData.a === "zoomout") reader.zoom = Math.max(0.5, reader.zoom / 1.25)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // fullscreen corner toggle: arrow visible means the bars are hidden (as on MeeGo)
+    Rectangle {
+        anchors { right: parent.right; bottom: parent.bottom; margins: Theme.paddingMedium }
+        width: Theme.itemSizeSmall
+        height: Theme.itemSizeSmall
+        radius: width / 2
+        color: Qt.rgba(0, 0, 0, 0.6)
+        visible: reader.fullscreen && !reader.annotate
+        z: 50
+        Label {
+            anchors.centerIn: parent
+            color: "white"
+            font.pixelSize: Theme.fontSizeLarge
+            text: reader.controlsShown ? "\u25BC" : "\u25B2"
+        }
+        MouseArea { anchors.fill: parent; onClicked: reader.controlsShown = !reader.controlsShown }
     }
 
     Rectangle {
