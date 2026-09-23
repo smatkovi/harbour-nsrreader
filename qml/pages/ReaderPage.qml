@@ -46,6 +46,11 @@ Page {
         annCanvas.requestPaint()
     }
     onFullscreenChanged: controlsShown = !fullscreen
+    property real zoomBeforeFit: 2.0
+    function toggleFitWidth() {
+        if (Math.abs(reader.zoom - 1.0) < 0.001) reader.zoom = Math.max(1.05, reader.zoomBeforeFit)
+        else { reader.zoomBeforeFit = reader.zoom; reader.zoom = 1.0 }
+    }
     function fitPage() { reader.zoom = (reader.height / pointsH()) / (reader.width / pointsW()) }
     function showNotice(t) { reader.notice = t; noticeTimer.restart() }
     Timer { id: noticeTimer; interval: 4000; onTriggered: reader.notice = "" }
@@ -338,14 +343,15 @@ Page {
                     }
                 }
 
-                // page-turn tap zones (inside the flickable content, above the image)
+                // double tap: left third previous, right third next, middle toggles fit-width (as on MeeGo)
                 MouseArea {
                     anchors.fill: parent
                     enabled: !reader.annotate
-                    onClicked: {
+                    onDoubleClicked: {
                         var p = mapToItem(reader, mouse.x, mouse.y)
-                        if (p.x < reader.width * 0.33) reader.goToPage(reader.currentPage - 1)
-                        else if (p.x > reader.width * 0.67) reader.goToPage(reader.currentPage + 1)
+                        if (p.x > reader.width * 2 / 3) reader.goToPage(reader.currentPage + 1)
+                        else if (p.x < reader.width / 3) reader.goToPage(reader.currentPage - 1)
+                        else reader.toggleFitWidth()
                     }
                 }
             }
