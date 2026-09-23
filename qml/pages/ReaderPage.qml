@@ -363,8 +363,9 @@ Page {
                 Image {
                     visible: false; cache: true; asynchronous: true
                     property int pg: reader.currentPage + index + 1
-                    source: (pdf.loaded && pg <= pdf.pageCount) ? srcFor(pg) : ""
-                    sourceSize.width: pxW(); sourceSize.height: pxH()
+                    source: (pdf.loaded && pg <= pdf.pageCount) ? reader.srcFor(pg) : ""
+                    sourceSize.width: Math.round(reader.pointsW() * reader.renderScale())
+                    sourceSize.height: Math.round(reader.pointsH() * reader.renderScale())
                 }
             }
         }
@@ -389,10 +390,11 @@ Page {
         }
     }
 
-    // ---- top bar (MeeGo: document button, page counter, zoom % , zoom out/in) ----
+    // ---- top bar, MeeGo proportions: document 1/7, pages 2/7, zoom ~2/7, minus 1/7, plus 1/7 ----
     Rectangle {
         id: topBar
-        anchors { top: parent.top; left: parent.left; right: parent.right }
+        anchors { top: parent.top; left: parent.left; right: parent.right
+                  topMargin: Theme.itemSizeExtraSmall / 2 }   // clear of the Silica back indicator
         height: Theme.itemSizeSmall
         color: Qt.rgba(0, 0, 0, 0.85)
         visible: reader.controlsShown && !reader.annotate
@@ -403,7 +405,7 @@ Page {
             spacing: 0
 
             Rectangle {
-                width: Theme.itemSizeSmall; height: parent.height
+                width: topBar.width / 7; height: parent.height
                 color: reader.docMenuOpen ? Qt.rgba(1, 1, 1, 0.15) : "transparent"
                 Image {
                     anchors.centerIn: parent
@@ -414,21 +416,23 @@ Page {
                 MouseArea { anchors.fill: parent
                     onClicked: { reader.docMenuOpen = !reader.docMenuOpen; reader.toolPanelOpen = false } }
             }
-            Item { width: Math.max(0, topBar.width - Theme.itemSizeSmall * 3 - pgL.width - zmL.width); height: 1 }
-            Label { id: pgL; anchors.verticalCenter: parent.verticalCenter
-                color: "white"; font.pixelSize: Theme.fontSizeSmall
-                text: pdf.loaded ? reader.currentPage + " / " + pdf.pageCount : "" }
-            Item { width: Theme.paddingLarge; height: 1 }
-            Label { id: zmL; anchors.verticalCenter: parent.verticalCenter
-                color: Theme.secondaryColor; font.pixelSize: Theme.fontSizeSmall
-                text: Math.round(reader.zoom * 100) + "%" }
             Rectangle {
-                width: Theme.itemSizeSmall; height: parent.height; color: "transparent"
+                width: topBar.width * 2 / 7; height: parent.height; color: "transparent"
+                Label { anchors.centerIn: parent; color: "white"; font.pixelSize: Theme.fontSizeSmall
+                    text: pdf.loaded ? reader.currentPage + " / " + pdf.pageCount : "" }
+            }
+            Rectangle {
+                width: topBar.width - (topBar.width / 7) * 5; height: parent.height; color: "transparent"
+                Label { anchors.centerIn: parent; color: Theme.secondaryColor; font.pixelSize: Theme.fontSizeSmall
+                    text: Math.round(reader.zoom * 100) + "%" }
+            }
+            Rectangle {
+                width: topBar.width / 7; height: parent.height; color: "transparent"
                 Label { anchors.centerIn: parent; color: "white"; text: "\u2212"; font.pixelSize: Theme.fontSizeLarge }
                 MouseArea { anchors.fill: parent; onClicked: reader.zoom = Math.max(0.5, reader.zoom / 1.25) }
             }
             Rectangle {
-                width: Theme.itemSizeSmall; height: parent.height; color: "transparent"
+                width: topBar.width / 7; height: parent.height; color: "transparent"
                 Label { anchors.centerIn: parent; color: "white"; text: "+"; font.pixelSize: Theme.fontSizeLarge }
                 MouseArea { anchors.fill: parent; onClicked: reader.zoom = Math.min(6, reader.zoom * 1.25) }
             }
@@ -447,7 +451,7 @@ Page {
             id: docCol
             anchors { left: parent.left; right: parent.right; top: parent.top; margins: Theme.paddingMedium }
             Repeater {
-                model: ["Fit width", "Fit page", "Rotate left", "Rotate right", "Invert colours", "Go to page"]
+                model: ["Fit width", "Fit page", "Rotate left", "Rotate right", "Invert colours", "Go to page", "Go to bar"]
                 Rectangle {
                     width: parent.width; height: Theme.itemSizeSmall; color: "transparent"
                     Label { anchors { left: parent.left; verticalCenter: parent.verticalCenter }
@@ -462,6 +466,7 @@ Page {
                             else if (index === 3) reader.rotateBy(90)
                             else if (index === 4) { reader.inverted = !reader.inverted; settings.invertedColors = reader.inverted }
                             else if (index === 5) reader.askPage()
+                            else if (index === 6) reader.askBar()
                         }
                     }
                 }

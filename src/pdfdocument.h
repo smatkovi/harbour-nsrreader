@@ -7,6 +7,7 @@
 #include <QStringList>
 #include <QHash>
 #include <QMutex>
+#include <QCache>
 
 namespace Poppler { class Document; }
 
@@ -52,6 +53,7 @@ private:
     int m_generation;
     bool m_locked;
     QHash<int, QString> m_textCache;
+    QCache<QString, QImage> m_imgCache;
     QMutex m_mutex;
 };
 

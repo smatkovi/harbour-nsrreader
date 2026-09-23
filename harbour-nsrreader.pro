@@ -2,6 +2,8 @@ TARGET = harbour-nsrreader
 CONFIG += sailfishapp c++11 link_pkgconfig
 PKGCONFIG += poppler-qt5
 QT += core gui qml quick
+QMAKE_CXXFLAGS_RELEASE += -O3 -ftree-vectorize -ffast-math
+QMAKE_CFLAGS_RELEASE += -O3 -ftree-vectorize
 LIBS += -lsailfishapp
 
 SOURCES += \
