@@ -359,10 +359,23 @@ Page {
         }
     }
 
-    BusyIndicator {
+    Rectangle {
         anchors.centerIn: parent
-        size: BusyIndicatorSize.Large
-        running: !pdf.loaded || preloader.status === Image.Loading || reader.shownSource === ""
+        width: Theme.itemSizeExtraLarge
+        height: Theme.itemSizeExtraLarge
+        radius: width / 2
+        color: Qt.rgba(0, 0, 0, 0.55)
+        visible: busy.running
+        z: 100
+        BusyIndicator {
+            id: busy
+            anchors.centerIn: parent
+            size: BusyIndicatorSize.Large
+            running: !pdf.loaded
+                     || reader.shownSource === ""
+                     || preloader.status === Image.Loading
+                     || Math.abs(reader.effScale() - reader.shownScale) > 0.001
+        }
     }
 
     Rectangle {
