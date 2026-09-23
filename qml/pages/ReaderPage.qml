@@ -390,11 +390,11 @@ Page {
         }
     }
 
-    // ---- top bar, MeeGo proportions: document 1/7, pages 2/7, zoom ~2/7, minus 1/7, plus 1/7 ----
+    // ---- top bar: MeeGo widths (sevenths); document button moved to the right end,
+    //      away from the Silica back indicator in the top-left corner ----
     Rectangle {
         id: topBar
-        anchors { top: parent.top; left: parent.left; right: parent.right
-                  topMargin: Theme.itemSizeExtraSmall / 2 }   // clear of the Silica back indicator
+        anchors { top: parent.top; left: parent.left; right: parent.right }
         height: Theme.itemSizeSmall
         color: Qt.rgba(0, 0, 0, 0.85)
         visible: reader.controlsShown && !reader.annotate
@@ -404,18 +404,6 @@ Page {
             anchors.fill: parent
             spacing: 0
 
-            Rectangle {
-                width: topBar.width / 7; height: parent.height
-                color: reader.docMenuOpen ? Qt.rgba(1, 1, 1, 0.15) : "transparent"
-                Image {
-                    anchors.centerIn: parent
-                    width: Theme.iconSizeMedium; height: Theme.iconSizeMedium
-                    fillMode: Image.PreserveAspectFit
-                    source: "/usr/share/icons/hicolor/108x108/apps/harbour-nsrreader.png"
-                }
-                MouseArea { anchors.fill: parent
-                    onClicked: { reader.docMenuOpen = !reader.docMenuOpen; reader.toolPanelOpen = false } }
-            }
             Rectangle {
                 width: topBar.width * 2 / 7; height: parent.height; color: "transparent"
                 Label { anchors.centerIn: parent; color: "white"; font.pixelSize: Theme.fontSizeSmall
@@ -436,12 +424,24 @@ Page {
                 Label { anchors.centerIn: parent; color: "white"; text: "+"; font.pixelSize: Theme.fontSizeLarge }
                 MouseArea { anchors.fill: parent; onClicked: reader.zoom = Math.min(6, reader.zoom * 1.25) }
             }
+            Rectangle {
+                width: topBar.width / 7; height: parent.height
+                color: reader.docMenuOpen ? Qt.rgba(1, 1, 1, 0.15) : "transparent"
+                Image {
+                    anchors.centerIn: parent
+                    width: Theme.iconSizeMedium; height: Theme.iconSizeMedium
+                    fillMode: Image.PreserveAspectFit
+                    source: "/usr/share/icons/hicolor/108x108/apps/harbour-nsrreader.png"
+                }
+                MouseArea { anchors.fill: parent
+                    onClicked: { reader.docMenuOpen = !reader.docMenuOpen; reader.toolPanelOpen = false } }
+            }
         }
     }
 
     // ---- document menu (drops down from the document button) ----
     Rectangle {
-        anchors { top: topBar.bottom; left: parent.left }
+        anchors { top: topBar.bottom; right: parent.right }
         width: Math.min(reader.width * 0.7, Theme.itemSizeHuge * 2)
         height: docCol.height + Theme.paddingMedium * 2
         color: Qt.rgba(0, 0, 0, 0.92)
