@@ -14,7 +14,7 @@ Page {
                 x: Theme.horizontalPageMargin
                 width: parent.width - 2 * Theme.horizontalPageMargin
                 wrapMode: Text.WordWrap
-                text: "NSR Reader for Sailfish OS\nVersion 0.22.0"
+                text: "NSR Reader for Sailfish OS\nVersion 0.23.0"
                 color: Theme.primaryColor
             }
             Label {

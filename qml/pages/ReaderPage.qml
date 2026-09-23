@@ -14,6 +14,8 @@ Page {
     property bool inverted: settings.invertedColors
     property bool fullscreen: settings.fullscreen
     property bool controlsShown: !settings.fullscreen
+    property bool docMenuOpen: false
+    property bool toolPanelOpen: false
     property real renderZoom: 1.0
     property string shownSource: ""
     property real shownScale: 1.0
@@ -387,14 +389,84 @@ Page {
         }
     }
 
+    // ---- top bar (MeeGo: document button, page counter, zoom % , zoom out/in) ----
     Rectangle {
-        anchors { top: parent.top; horizontalCenter: parent.horizontalCenter }
-        color: Qt.rgba(0, 0, 0, 0.55); radius: 6
-        width: pl.width + Theme.paddingMedium * 2
-        height: pl.height + Theme.paddingSmall
-        visible: pdf.loaded && reader.controlsShown
-        Label { id: pl; anchors.centerIn: parent; color: "white"
-            text: reader.currentPage + " / " + pdf.pageCount; font.pixelSize: Theme.fontSizeSmall }
+        id: topBar
+        anchors { top: parent.top; left: parent.left; right: parent.right }
+        height: Theme.itemSizeSmall
+        color: Qt.rgba(0, 0, 0, 0.85)
+        visible: reader.controlsShown && !reader.annotate
+        z: 40
+
+        Row {
+            anchors.fill: parent
+            spacing: 0
+
+            Rectangle {
+                width: Theme.itemSizeSmall; height: parent.height
+                color: reader.docMenuOpen ? Qt.rgba(1, 1, 1, 0.15) : "transparent"
+                Image {
+                    anchors.centerIn: parent
+                    width: Theme.iconSizeMedium; height: Theme.iconSizeMedium
+                    fillMode: Image.PreserveAspectFit
+                    source: "/usr/share/icons/hicolor/108x108/apps/harbour-nsrreader.png"
+                }
+                MouseArea { anchors.fill: parent
+                    onClicked: { reader.docMenuOpen = !reader.docMenuOpen; reader.toolPanelOpen = false } }
+            }
+            Item { width: Math.max(0, topBar.width - Theme.itemSizeSmall * 3 - pgL.width - zmL.width); height: 1 }
+            Label { id: pgL; anchors.verticalCenter: parent.verticalCenter
+                color: "white"; font.pixelSize: Theme.fontSizeSmall
+                text: pdf.loaded ? reader.currentPage + " / " + pdf.pageCount : "" }
+            Item { width: Theme.paddingLarge; height: 1 }
+            Label { id: zmL; anchors.verticalCenter: parent.verticalCenter
+                color: Theme.secondaryColor; font.pixelSize: Theme.fontSizeSmall
+                text: Math.round(reader.zoom * 100) + "%" }
+            Rectangle {
+                width: Theme.itemSizeSmall; height: parent.height; color: "transparent"
+                Label { anchors.centerIn: parent; color: "white"; text: "\u2212"; font.pixelSize: Theme.fontSizeLarge }
+                MouseArea { anchors.fill: parent; onClicked: reader.zoom = Math.max(0.5, reader.zoom / 1.25) }
+            }
+            Rectangle {
+                width: Theme.itemSizeSmall; height: parent.height; color: "transparent"
+                Label { anchors.centerIn: parent; color: "white"; text: "+"; font.pixelSize: Theme.fontSizeLarge }
+                MouseArea { anchors.fill: parent; onClicked: reader.zoom = Math.min(6, reader.zoom * 1.25) }
+            }
+        }
+    }
+
+    // ---- document menu (drops down from the document button) ----
+    Rectangle {
+        anchors { top: topBar.bottom; left: parent.left }
+        width: Math.min(reader.width * 0.7, Theme.itemSizeHuge * 2)
+        height: docCol.height + Theme.paddingMedium * 2
+        color: Qt.rgba(0, 0, 0, 0.92)
+        visible: reader.docMenuOpen && reader.controlsShown && !reader.annotate
+        z: 45
+        Column {
+            id: docCol
+            anchors { left: parent.left; right: parent.right; top: parent.top; margins: Theme.paddingMedium }
+            Repeater {
+                model: ["Fit width", "Fit page", "Rotate left", "Rotate right", "Invert colours", "Go to page"]
+                Rectangle {
+                    width: parent.width; height: Theme.itemSizeSmall; color: "transparent"
+                    Label { anchors { left: parent.left; verticalCenter: parent.verticalCenter }
+                        color: "white"; text: modelData; font.pixelSize: Theme.fontSizeSmall }
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: {
+                            reader.docMenuOpen = false
+                            if (index === 0) reader.zoom = 1.0
+                            else if (index === 1) reader.fitPage()
+                            else if (index === 2) reader.rotateBy(-90)
+                            else if (index === 3) reader.rotateBy(90)
+                            else if (index === 4) { reader.inverted = !reader.inverted; settings.invertedColors = reader.inverted }
+                            else if (index === 5) reader.askPage()
+                        }
+                    }
+                }
+            }
+        }
     }
 
     Rectangle {
@@ -416,64 +488,85 @@ Page {
         Label { id: ntLbl; anchors.centerIn: parent; color: "white"; text: reader.notice; font.pixelSize: Theme.fontSizeSmall }
     }
 
-    Column {
-        id: bottomStack
-        anchors { bottom: parent.bottom; horizontalCenter: parent.horizontalCenter; bottomMargin: Theme.paddingSmall }
+    // ---- marker bar, sits above the bottom bar ----
+    Row {
+        id: markerRow
+        anchors { bottom: toolPanel.visible ? toolPanel.top : bottomBar.top
+                  horizontalCenter: parent.horizontalCenter; bottomMargin: Theme.paddingSmall }
         spacing: Theme.paddingSmall
-        visible: !reader.annotate && reader.controlsShown
+        visible: !reader.annotate && reader.controlsShown && scanner.scannedOk && scanner.markerLabels.length > 0
+        z: 40
+        Repeater {
+            model: scanner.markerLabels
+            Rectangle {
+                width: mlab.width + Theme.paddingLarge
+                height: mlab.height + Theme.paddingSmall
+                radius: 6; color: "#0088cd"
+                Label { id: mlab; anchors.centerIn: parent; text: modelData; color: "white"; font.pixelSize: Theme.fontSizeSmall }
+                MouseArea { anchors.fill: parent; onClicked: reader.goToPage(scanner.markerPages[index]) }
+            }
+        }
+    }
 
-        Row {
-            anchors.horizontalCenter: parent.horizontalCenter
-            spacing: Theme.paddingSmall
-            visible: scanner.scannedOk && scanner.markerLabels.length > 0
+    // ---- tool panel (slides out of the arrow button, like the MeeGo tool frame) ----
+    Rectangle {
+        id: toolPanel
+        anchors { bottom: bottomBar.top; left: parent.left; right: parent.right }
+        height: toolGrid.height + Theme.paddingMedium * 2
+        color: Qt.rgba(0, 0, 0, 0.92)
+        visible: reader.toolPanelOpen && reader.controlsShown && !reader.annotate
+        z: 45
+        Grid {
+            id: toolGrid
+            anchors { left: parent.left; right: parent.right; top: parent.top; margins: Theme.paddingMedium }
+            columns: 3
             Repeater {
-                model: scanner.markerLabels
+                model: ["Preferences", "Go to page", "Go to bar", "Annotate", "About", "Open"]
                 Rectangle {
-                    width: mlab.width + Theme.paddingLarge
-                    height: mlab.height + Theme.paddingSmall
-                    radius: 6; color: "#0088cd"
-                    Label { id: mlab; anchors.centerIn: parent; text: modelData; color: "white"; font.pixelSize: Theme.fontSizeSmall }
-                    MouseArea { anchors.fill: parent; onClicked: reader.goToPage(scanner.markerPages[index]) }
+                    width: toolGrid.width / 3; height: Theme.itemSizeSmall; color: "transparent"
+                    Label { anchors.centerIn: parent; color: "white"; text: modelData
+                        font.pixelSize: Theme.fontSizeSmall }
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: {
+                            reader.toolPanelOpen = false
+                            if (index === 0) pageStack.push(Qt.resolvedUrl("PreferencesPage.qml"))
+                            else if (index === 1) reader.askPage()
+                            else if (index === 2) reader.askBar()
+                            else if (index === 3) reader.annotate = true
+                            else if (index === 4) pageStack.push(Qt.resolvedUrl("AboutPage.qml"))
+                            else if (index === 5) pageStack.pop()
+                        }
+                    }
                 }
             }
         }
+    }
 
-        // navigation / zoom controls
+    // ---- bottom bar (MeeGo: prev, next, open, arrow) ----
+    Rectangle {
+        id: bottomBar
+        anchors { bottom: parent.bottom; left: parent.left; right: parent.right }
+        height: Theme.itemSizeSmall
+        color: Qt.rgba(0, 0, 0, 0.85)
+        visible: reader.controlsShown && !reader.annotate
+        z: 40
         Row {
-            anchors.horizontalCenter: parent.horizontalCenter
-            spacing: Theme.paddingSmall
-            visible: pdf.loaded
-
+            anchors.fill: parent
             Repeater {
-                model: [
-                    { "t": "\u25C0", "a": "prev" },
-                    { "t": "\u2212", "a": "zoomout" },
-                    { "t": "", "a": "zoomlabel" },
-                    { "t": "+", "a": "zoomin" },
-                    { "t": "\u25B6", "a": "next" }
-                ]
+                model: ["\u25C0", "\u25B6", "Open", "\u25B2"]
                 Rectangle {
-                    width: Math.max(clab.width + Theme.paddingLarge, Theme.itemSizeSmall)
-                    height: Theme.itemSizeExtraSmall
-                    radius: 6
-                    color: modelData.a === "zoomlabel" ? Qt.rgba(0, 0, 0, 0.55) : Qt.rgba(0, 0, 0, 0.75)
-                    Label {
-                        id: clab
-                        anchors.centerIn: parent
-                        color: "white"
-                        font.pixelSize: Theme.fontSizeSmall
-                        text: modelData.a === "zoomlabel"
-                              ? Math.round(reader.zoom * 100) + "%"
-                              : modelData.t
-                    }
+                    width: bottomBar.width / 4; height: parent.height
+                    color: (index === 3 && reader.toolPanelOpen) ? Qt.rgba(1, 1, 1, 0.15) : "transparent"
+                    Label { anchors.centerIn: parent; color: "white"; text: modelData
+                        font.pixelSize: index === 2 ? Theme.fontSizeSmall : Theme.fontSizeLarge }
                     MouseArea {
                         anchors.fill: parent
-                        enabled: modelData.a !== "zoomlabel"
                         onClicked: {
-                            if (modelData.a === "prev") reader.goToPage(reader.currentPage - 1)
-                            else if (modelData.a === "next") reader.goToPage(reader.currentPage + 1)
-                            else if (modelData.a === "zoomin") reader.zoom = Math.min(6, reader.zoom * 1.25)
-                            else if (modelData.a === "zoomout") reader.zoom = Math.max(0.5, reader.zoom / 1.25)
+                            if (index === 0) reader.goToPage(reader.currentPage - 1)
+                            else if (index === 1) reader.goToPage(reader.currentPage + 1)
+                            else if (index === 2) pageStack.pop()
+                            else { reader.toolPanelOpen = !reader.toolPanelOpen; reader.docMenuOpen = false }
                         }
                     }
                 }
