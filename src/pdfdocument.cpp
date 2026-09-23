@@ -4,7 +4,7 @@
 #include <QFileInfo>
 
 PdfDocument::PdfDocument(QObject *parent)
-    : QObject(parent), m_doc(0), m_pageCount(0), m_locked(false) {}
+    : QObject(parent), m_doc(0), m_pageCount(0), m_generation(0), m_locked(false) {}
 
 PdfDocument::~PdfDocument() { clear(); }
 
@@ -28,6 +28,7 @@ void PdfDocument::setSource(const QString &s)
 void PdfDocument::load()
 {
     clear();
+    ++m_generation;
     if (m_source.isEmpty() || !QFileInfo(m_source).exists()) { emit loadedChanged(); return; }
     m_doc = Poppler::Document::load(m_source);
     if (!m_doc) { emit loadedChanged(); return; }

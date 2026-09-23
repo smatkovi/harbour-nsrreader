@@ -39,6 +39,29 @@ Page {
                 checked: settings.loadLastDoc
                 onCheckedChanged: settings.loadLastDoc = checked
             }
+            SectionHeader { text: "Text files" }
+            TextSwitch {
+                text: "Word wrap"
+                checked: settings.wordWrap
+                onCheckedChanged: settings.wordWrap = checked
+            }
+            Slider {
+                width: parent.width
+                minimumValue: 10; maximumValue: 60; stepSize: 2
+                value: settings.textFontSize
+                label: "Text size"
+                valueText: value
+                onValueChanged: settings.textFontSize = value
+            }
+            ValueButton {
+                label: "Encoding"
+                value: settings.textEncoding
+                onClicked: {
+                    var dlg = pageStack.push(Qt.resolvedUrl("PickListDialog.qml"),
+                        { title: "Encoding", items: textdoc.encodings() })
+                    dlg.accepted.connect(function() { if (dlg.selected.length) settings.textEncoding = dlg.selected })
+                }
+            }
         }
     }
 }

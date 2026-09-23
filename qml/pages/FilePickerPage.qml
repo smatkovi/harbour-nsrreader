@@ -63,7 +63,11 @@ Page {
                     page.folder = filePath
                     settings.lastOpenDir = filePath
                 } else {
-                    pageStack.push(Qt.resolvedUrl("ReaderPage.qml"), { path: filePath })
+                    var lower = fileName.toLowerCase()
+                    if (lower.indexOf(".txt", lower.length - 4) !== -1)
+                        pageStack.push(Qt.resolvedUrl("TextReaderPage.qml"), { path: filePath })
+                    else
+                        pageStack.push(Qt.resolvedUrl("ReaderPage.qml"), { path: filePath })
                 }
             }
         }

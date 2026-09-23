@@ -17,6 +17,7 @@
 #include "markerscanner.h"
 #include "annotationstore.h"
 #include "appsettings.h"
+#include "textdocument.h"
 
 static FILE *g_boot = 0;
 #define BLOG(msg) do { if (g_boot) { fprintf(g_boot, "%s\n", msg); fflush(g_boot); } } while (0)
@@ -50,6 +51,7 @@ int main(int argc, char *argv[])
     MarkerScanner *scanner = new MarkerScanner(app);
     AnnotationStore *anns = new AnnotationStore(app);
     AppSettings *settings = new AppSettings(app);
+    TextDocument *textdoc = new TextDocument(app);
 
     BLOG("04 backends created");
     QQuickView *view = SailfishApp::createView();
@@ -64,6 +66,7 @@ int main(int argc, char *argv[])
     view->rootContext()->setContextProperty(QStringLiteral("scanner"), scanner);
     view->rootContext()->setContextProperty(QStringLiteral("anns"), anns);
     view->rootContext()->setContextProperty(QStringLiteral("settings"), settings);
+    view->rootContext()->setContextProperty(QStringLiteral("textdoc"), textdoc);
 
     QUrl src = SailfishApp::pathTo(QStringLiteral("qml/harbour-nsrreader.qml"));
     qWarning() << "src" << src.toString();

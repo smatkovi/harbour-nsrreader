@@ -129,6 +129,8 @@ void AnnotationStore::resizeAnn(int index, qreal sx, qreal sy)
 {
     if (index < 0 || index >= m_anns.size()) return;
     Ann &a = m_anns[index];
+    if (a.rect.width() < 0.005) a.rect.setWidth(0.03);
+    if (a.rect.height() < 0.005) a.rect.setHeight(0.03);
     qreal ax = a.rect.left(), ay = a.rect.top();
     if (a.type == 1 && !a.pts.isEmpty()) { ax = a.pts.at(0).x(); ay = a.pts.at(0).y();
         for (int k = 1; k < a.pts.size(); ++k) { if (a.pts.at(k).x() < ax) ax = a.pts.at(k).x(); if (a.pts.at(k).y() < ay) ay = a.pts.at(k).y(); } }
@@ -142,6 +144,20 @@ void AnnotationStore::recolorAnn(int index, const QString &color)
     if (index < 0 || index >= m_anns.size()) return;
     m_anns[index].color = QColor(color); save(); emit changed(m_anns[index].page);
 }
+void AnnotationStore::flipHairpin(int index)
+{
+    if (index < 0 || index >= m_anns.size()) return;
+    if (m_anns[index].type != 3) return;
+    m_anns[index].text = (m_anns[index].text == "c") ? QString("d") : QString("c");
+    save(); emit changed(m_anns[index].page);
+}
+
+int AnnotationStore::typeOf(int index) const
+{
+    if (index < 0 || index >= m_anns.size()) return -1;
+    return m_anns.at(index).type;
+}
+
 void AnnotationStore::deleteAnn(int index)
 {
     if (index < 0 || index >= m_anns.size()) return;

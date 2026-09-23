@@ -53,6 +53,26 @@ void AppSettings::setLastOpenDir(const QString &p)
     m_s.setValue("lastOpenDir", p); m_s.sync(); emit changed();
 }
 
+bool AppSettings::wordWrap() const { return m_s.value("wordWrap", true).toBool(); }
+void AppSettings::setWordWrap(bool b)
+{
+    if (b == wordWrap()) return;
+    m_s.setValue("wordWrap", b); m_s.sync(); emit changed();
+}
+QString AppSettings::textEncoding() const { return m_s.value("textEncoding", "UTF-8").toString(); }
+void AppSettings::setTextEncoding(const QString &e)
+{
+    if (e == textEncoding()) return;
+    m_s.setValue("textEncoding", e); m_s.sync(); emit changed();
+}
+int AppSettings::textFontSize() const { return m_s.value("textFontSize", 24).toInt(); }
+void AppSettings::setTextFontSize(int n)
+{
+    if (n < 10) n = 10; if (n > 60) n = 60;
+    if (n == textFontSize()) return;
+    m_s.setValue("textFontSize", n); m_s.sync(); emit changed();
+}
+
 double AppSettings::lastZoom(const QString &docPath) const
 {
     if (docPath.isEmpty()) return 1.0;

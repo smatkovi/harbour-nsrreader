@@ -25,6 +25,8 @@ public:
     Q_INVOKABLE void moveAnn(int index, qreal dx, qreal dy);
     Q_INVOKABLE void resizeAnn(int index, qreal sx, qreal sy);
     Q_INVOKABLE void recolorAnn(int index, const QString &color);
+    Q_INVOKABLE void flipHairpin(int index);
+    Q_INVOKABLE int typeOf(int index) const;
     Q_INVOKABLE void deleteAnn(int index);
 
 signals:

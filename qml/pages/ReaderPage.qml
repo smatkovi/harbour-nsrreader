@@ -13,6 +13,9 @@ Page {
     property int rotation: 0
     property bool inverted: settings.invertedColors
     property bool fullscreen: settings.fullscreen
+    property real renderZoom: 1.0
+    property string shownSource: ""
+    property real shownScale: 1.0
 
     property bool annotate: false
     property int tool: 0
@@ -25,10 +28,12 @@ Page {
     function pointsH() { var s = pdf.pageSizePoints(currentPage, rotation); return (s && s.height > 0) ? s.height : 842 }
     function baseScale() { return reader.width / pointsW() }
     function effScale() { return baseScale() * zoom }
+    function renderScale() { return baseScale() * renderZoom }
     function pxW() { return Math.round(pointsW() * effScale()) }
     function pxH() { return Math.round(pointsH() * effScale()) }
-    function srcFor(pg) { return "image://pdf/" + pg + "/" + Math.round(effScale() * 1000)
-                                 + "/" + reader.rotation + "/" + (reader.inverted ? 1 : 0) }
+    function srcFor(pg) { return "image://pdf/" + pg + "/" + Math.round(renderScale() * 1000)
+                                 + "/" + reader.rotation + "/" + (reader.inverted ? 1 : 0)
+                                 + "/" + pdf.generation }
     function rotateBy(d) { reader.rotation = ((reader.rotation + d) % 360 + 360) % 360;
                            settings.setLastRotation(reader.path, reader.rotation) }
 
@@ -42,17 +47,21 @@ Page {
     function fitPage() { reader.zoom = (reader.height / pointsH()) / (reader.width / pointsW()) }
     function showNotice(t) { reader.notice = t; noticeTimer.restart() }
     Timer { id: noticeTimer; interval: 4000; onTriggered: reader.notice = "" }
+    Timer { id: zoomSettle; interval: 250; onTriggered: reader.renderZoom = reader.zoom }
 
     Component.onCompleted: { pdf.source = path; anns.setDocument(path) }
     onCurrentPageChanged: settings.setLastPage(reader.path, currentPage)
-    onZoomChanged: settings.setLastZoom(reader.path, zoom)
+    onZoomChanged: { settings.setLastZoom(reader.path, zoom); zoomSettle.restart() }
     Connections {
         target: pdf
         onLoadedChanged: {
+            reader.shownSource = ""
+            reader.shownScale = 1.0
             if (!pdf.loaded) return
             scanner.scan(pdf)
             reader.rotation = settings.lastRotation(reader.path)
             reader.zoom = settings.lastZoom(reader.path)
+            reader.renderZoom = reader.zoom
             settings.lastDoc = reader.path
             goToPage(settings.lastPage(reader.path))
             if (scanner.markerLabels.length > 0) reader.showNotice("Text jumps: " + scanner.markerLabels.join(", "))
@@ -106,11 +115,13 @@ Page {
                 Image {
                     id: pageImg
                     anchors.centerIn: parent
-                    width: pxW(); height: pxH()
+                    width: Math.max(1, Math.round(pointsW() * reader.shownScale))
+                    height: Math.max(1, Math.round(pointsH() * reader.shownScale))
+                    scale: reader.shownScale > 0 ? reader.effScale() / reader.shownScale : 1
+                    transformOrigin: Item.Center
                     fillMode: Image.Stretch
-                    asynchronous: true; cache: true
-                    sourceSize.width: pxW(); sourceSize.height: pxH()
-                    source: pdf.loaded ? srcFor(currentPage) : ""
+                    asynchronous: false; cache: true
+                    source: reader.shownSource
                     onWidthChanged: annCanvas.requestPaint()
 
                     Canvas {
@@ -160,8 +171,9 @@ Page {
                                 }
                                 ctx.stroke()
                             } else if (a.type === 2) {
-                                ctx.font = "bold italic " + Math.max(12, px(0.03)) + "px sans-serif"
-                                ctx.fillText(a.text, px(ax + dx), py(ay + dy) + px(0.03))
+                                var fs = Math.max(10, py(a.h) * ssy * 1.6)
+                                ctx.font = "bold italic " + fs + "px sans-serif"
+                                ctx.fillText(a.text, px(ax + dx), py(ay + dy) + fs)
                             } else if (a.type === 3) {
                                 var x0 = px(ax + dx), x1 = px(ax + a.w * ssx + dx)
                                 var yt = py(ay + dy), yb = py(ay + dy) + py(a.h) * ssy, ym = (yt + yb) / 2
@@ -235,8 +247,8 @@ Page {
                                 if (reader.tool >= 4) {
                                     var idx = annCanvas.hit(rx, ry)
                                     if (idx < 0) return
-                                    if (reader.tool === 7) { anns.deleteAnn(idx); return }
-                                    if (reader.tool === 6) { anns.recolorAnn(idx, reader.annColor); return }
+                                    if (reader.tool === 6) { anns.deleteAnn(idx); return }
+                                    if (reader.tool === 7) { anns.recolorAnn(idx, reader.annColor); return }
                                     annCanvas.editIdx = idx
                                     annCanvas.editDx = 0; annCanvas.editDy = 0
                                     annCanvas.editScaleX = 1; annCanvas.editScaleY = 1
@@ -244,6 +256,9 @@ Page {
                                     annCanvas.drawing = true
                                 } else if (reader.tool === 2) {
                                     reader.pickDynamic(rx, ry)
+                                } else if (reader.tool === 3 && annCanvas.hit(rx, ry) >= 0
+                                           && anns.typeOf(annCanvas.hit(rx, ry)) === 3) {
+                                    anns.flipHairpin(annCanvas.hit(rx, ry))
                                 } else {
                                     annCanvas.drawing = true
                                     annCanvas.tempPts = [{ x: mouse.x, y: mouse.y }]
@@ -286,6 +301,7 @@ Page {
                                     var hy = Math.min(annCanvas.sy, annCanvas.cy) / height
                                     var hw = Math.abs(annCanvas.cx - annCanvas.sx) / width
                                     var hh = Math.abs(annCanvas.cy - annCanvas.sy) / height
+                                    if (hh < 0.025) { hy = Math.max(0, hy - 0.0125); hh = 0.025 }
                                     if (hw > 0.01) anns.addHairpin(pg, hx, hy, hw, hh, annCanvas.cx >= annCanvas.sx, reader.annColor)
                                 } else if (reader.tool === 4 && annCanvas.editIdx >= 0) {
                                     anns.moveAnn(annCanvas.editIdx, annCanvas.editDx, annCanvas.editDy)
@@ -297,6 +313,24 @@ Page {
                                 annCanvas.editScaleX = 1; annCanvas.editScaleY = 1
                                 annCanvas.requestPaint()
                             }
+                        }
+                    }
+                }
+
+                // renders the new resolution off-screen; swap in only when finished
+                Image {
+                    id: preloader
+                    visible: false
+                    asynchronous: true
+                    cache: true
+                    source: pdf.loaded ? reader.srcFor(reader.currentPage) : ""
+                    sourceSize.width: Math.round(pointsW() * reader.renderScale())
+                    sourceSize.height: Math.round(pointsH() * reader.renderScale())
+                    onStatusChanged: {
+                        if (status === Image.Ready) {
+                            reader.shownSource = source
+                            reader.shownScale = reader.renderScale()
+                            annCanvas.requestPaint()
                         }
                     }
                 }
@@ -328,7 +362,7 @@ Page {
     BusyIndicator {
         anchors.centerIn: parent
         size: BusyIndicatorSize.Large
-        running: !pdf.loaded || pageImg.status !== Image.Ready
+        running: !pdf.loaded || preloader.status === Image.Loading || reader.shownSource === ""
     }
 
     Rectangle {
@@ -386,7 +420,7 @@ Page {
             anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; margins: Theme.paddingSmall }
             spacing: Theme.paddingSmall
             Repeater {
-                model: ["Circle", "Pen", "Text", "Hairpin", "Move", "Resize", "Recolor", "Delete"]
+                model: ["Circle", "Pen", "Text", "Hairpin", "Move", "Resize", "Delete"]
                 Rectangle {
                     width: tl.width + Theme.paddingMedium
                     height: tl.height + Theme.paddingSmall
@@ -400,6 +434,8 @@ Page {
                 width: cl.width + Theme.paddingMedium
                 height: cl.height + Theme.paddingSmall
                 radius: 5; color: reader.annColor
+                border.width: reader.tool === 7 ? 3 : 0
+                border.color: "white"
                 Label { id: cl; anchors.centerIn: parent; text: "Color"; color: "white"; font.pixelSize: Theme.fontSizeTiny }
                 MouseArea { anchors.fill: parent; onClicked: reader.pickColor() }
             }
@@ -435,7 +471,7 @@ Page {
         dlg.accepted.connect(function() {
             var map = { "Light blue": "#33aaff", "Red": "#ff0000", "Green": "#00aa00",
                         "Orange": "#ff8800", "Black": "#000000", "Magenta": "#cc00cc" }
-            if (map[dlg.selected]) reader.annColor = map[dlg.selected]
+            if (map[dlg.selected]) { reader.annColor = map[dlg.selected]; reader.tool = 7 }
         })
     }
 

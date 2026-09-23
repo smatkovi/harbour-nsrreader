@@ -15,6 +15,9 @@ class AppSettings : public QObject
     Q_PROPERTY(bool loadLastDoc READ loadLastDoc WRITE setLoadLastDoc NOTIFY changed)
     Q_PROPERTY(QString lastDoc READ lastDoc WRITE setLastDoc NOTIFY changed)
     Q_PROPERTY(QString lastOpenDir READ lastOpenDir WRITE setLastOpenDir NOTIFY changed)
+    Q_PROPERTY(bool wordWrap READ wordWrap WRITE setWordWrap NOTIFY changed)
+    Q_PROPERTY(QString textEncoding READ textEncoding WRITE setTextEncoding NOTIFY changed)
+    Q_PROPERTY(int textFontSize READ textFontSize WRITE setTextFontSize NOTIFY changed)
 public:
     explicit AppSettings(QObject *parent = 0);
 
@@ -33,6 +36,12 @@ public:
     void setLastDoc(const QString &p);
     QString lastOpenDir() const;
     void setLastOpenDir(const QString &p);
+    bool wordWrap() const;
+    void setWordWrap(bool b);
+    QString textEncoding() const;
+    void setTextEncoding(const QString &e);
+    int textFontSize() const;
+    void setTextFontSize(int n);
 
     Q_INVOKABLE int lastPage(const QString &docPath) const;
     Q_INVOKABLE void setLastPage(const QString &docPath, int page);
