@@ -9,13 +9,15 @@ SOURCES += \
     src/pdfdocument.cpp \
     src/pageprovider.cpp \
     src/markerscanner.cpp \
-    src/annotationstore.cpp
+    src/annotationstore.cpp \
+    src/appsettings.cpp
 
 HEADERS += \
     src/pdfdocument.h \
     src/pageprovider.h \
     src/markerscanner.h \
-    src/annotationstore.h
+    src/annotationstore.h \
+    src/appsettings.h
 
 DISTFILES += \
     qml/harbour-nsrreader.qml \
@@ -23,6 +25,7 @@ DISTFILES += \
     qml/pages/ReaderPage.qml \
     qml/pages/GoToDialog.qml \
     qml/pages/PickListDialog.qml \
+    qml/pages/PreferencesPage.qml \
     qml/cover/CoverPage.qml \
     rpm/harbour-nsrreader.spec \
     harbour-nsrreader.desktop

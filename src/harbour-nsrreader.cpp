@@ -16,6 +16,7 @@
 #include "pageprovider.h"
 #include "markerscanner.h"
 #include "annotationstore.h"
+#include "appsettings.h"
 
 static FILE *g_boot = 0;
 #define BLOG(msg) do { if (g_boot) { fprintf(g_boot, "%s\n", msg); fflush(g_boot); } } while (0)
@@ -48,14 +49,21 @@ int main(int argc, char *argv[])
     PdfDocument *pdf = new PdfDocument(app);
     MarkerScanner *scanner = new MarkerScanner(app);
     AnnotationStore *anns = new AnnotationStore(app);
+    AppSettings *settings = new AppSettings(app);
 
     BLOG("04 backends created");
     QQuickView *view = SailfishApp::createView();
+    QObject::connect(view->engine(), &QQmlEngine::warnings, [](const QList<QQmlError> &ws) {
+        for (int i = 0; i < ws.size(); ++i) {
+            if (g_boot) { fprintf(g_boot, "QMLWARN %s\n", ws.at(i).toString().toUtf8().constData()); fflush(g_boot); }
+        }
+    });
     BLOG("05 createView ok");
     view->engine()->addImageProvider(QLatin1String("pdf"), new PageProvider(pdf));
     view->rootContext()->setContextProperty(QStringLiteral("pdf"), pdf);
     view->rootContext()->setContextProperty(QStringLiteral("scanner"), scanner);
     view->rootContext()->setContextProperty(QStringLiteral("anns"), anns);
+    view->rootContext()->setContextProperty(QStringLiteral("settings"), settings);
 
     QUrl src = SailfishApp::pathTo(QStringLiteral("qml/harbour-nsrreader.qml"));
     qWarning() << "src" << src.toString();

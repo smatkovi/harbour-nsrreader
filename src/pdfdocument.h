@@ -30,7 +30,7 @@ public:
     // Render page (1-based) at the given scale (1.0 == 72dpi == PDF points). Cached-friendly.
     QImage renderPage(int page, qreal scale);
     // Page size in PDF points (72dpi).
-    QSizeF pageSizePoints(int page);
+    Q_INVOKABLE QSizeF pageSizePoints(int page);
     // Full text of a page (1-based), cheap physical-layout extraction.
     Q_INVOKABLE QString textForPage(int page);
 
