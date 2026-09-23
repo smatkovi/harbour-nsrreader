@@ -6,9 +6,38 @@
 #include <QTextStream>
 #include <QDateTime>
 #include <QStandardPaths>
+#include <QRegExp>
+
+static qint64 totalRamBytes()
+{
+    QFile f("/proc/meminfo");
+    if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QTextStream ts(&f);
+        while (!ts.atEnd()) {
+            const QString line = ts.readLine();
+            if (line.startsWith("MemTotal:")) {
+                const QStringList parts = line.split(QRegExp("\\s+"), QString::SkipEmptyParts);
+                if (parts.size() >= 2) return qint64(parts.at(1).toLongLong()) * 1024;
+            }
+        }
+    }
+    return qint64(2) * 1024 * 1024 * 1024;
+}
+
+static bool debugLogging()
+{
+    static int on = -1;
+    if (on < 0) {
+        const QString flag = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)
+                             + "/harbour-nsrreader/DEBUG";
+        on = QFile::exists(flag) ? 1 : 0;
+    }
+    return on == 1;
+}
 
 static void renderLog(const QString &line)
 {
+    if (!debugLogging()) return;
     static QString path = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)
                           + "/harbour-nsrreader/render.log";
     QFile f(path);
@@ -94,7 +123,18 @@ QImage PdfDocument::renderPage(int page, qreal scale, int rotation, bool inverte
     if (inverted && !img.isNull()) img.invertPixels(QImage::InvertRgb);
     if (!img.isNull()) {
         int cost = img.bytesPerLine() * img.height();
-        if (cost > 0) m_imgCache.insert(key, new QImage(img), cost);
+        if (cost > 0) {
+            // Keep at least the current page plus the pre-rendered ones: at this zoom a single
+            // page can be tens of megabytes, so a fixed budget evicts them before they are used.
+            static const int ceiling = int(qMin<qint64>(qint64(1536) * 1024 * 1024, totalRamBytes() / 4));
+            int want = int(qMin<qint64>(qint64(ceiling), qint64(cost) * 5));
+            if (m_imgCache.maxCost() < want) {
+                m_imgCache.setMaxCost(want);
+                renderLog("cache budget -> " + QString::number(want / (1024 * 1024)) + " MB (page "
+                          + QString::number(cost / (1024 * 1024)) + " MB)");
+            }
+            m_imgCache.insert(key, new QImage(img), cost);
+        }
     }
     return img;
 }
