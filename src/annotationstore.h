@@ -26,6 +26,10 @@ public:
     Q_INVOKABLE void resizeAnn(int index, qreal sx, qreal sy);
     Q_INVOKABLE void recolorAnn(int index, const QString &color);
     Q_INVOKABLE void flipHairpin(int index);
+    // manual jump links: two points sharing a group, tap one to reach the other
+    Q_INVOKABLE int addLink(int page, qreal x, qreal y, const QString &color, int group);
+    Q_INVOKABLE int nextLinkGroup() const;
+    Q_INVOKABLE QVariantMap linkPartner(int index) const;
     Q_INVOKABLE int typeOf(int index) const;
     Q_INVOKABLE void deleteAnn(int index);
 

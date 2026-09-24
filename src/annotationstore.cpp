@@ -4,6 +4,7 @@
 #include <QDir>
 #include <QStandardPaths>
 #include <QCryptographicHash>
+#include <QVariantMap>
 
 AnnotationStore::AnnotationStore(QObject *parent) : QObject(parent) {}
 
@@ -144,6 +145,49 @@ void AnnotationStore::recolorAnn(int index, const QString &color)
     if (index < 0 || index >= m_anns.size()) return;
     m_anns[index].color = QColor(color); save(); emit changed(m_anns[index].page);
 }
+int AnnotationStore::nextLinkGroup() const
+{
+    int g = 1;
+    for (int i = 0; i < m_anns.size(); ++i)
+        if (m_anns.at(i).type == 4) {
+            const int v = m_anns.at(i).text.toInt();
+            if (v >= g) g = v + 1;
+        }
+    return g;
+}
+
+int AnnotationStore::addLink(int page, qreal x, qreal y, const QString &color, int group)
+{
+    const qreal r = 0.022;
+    Ann a;
+    a.page = page;
+    a.type = 4;
+    a.rect = QRectF(x - r, y - r, r * 2, r * 2);
+    a.color = QColor(color);
+    a.text = QString::number(group);
+    m_anns << a;
+    save();
+    emit changed(page);
+    return m_anns.size() - 1;
+}
+
+QVariantMap AnnotationStore::linkPartner(int index) const
+{
+    QVariantMap out;
+    if (index < 0 || index >= m_anns.size()) return out;
+    if (m_anns.at(index).type != 4) return out;
+    const QString group = m_anns.at(index).text;
+    for (int i = 0; i < m_anns.size(); ++i) {
+        if (i == index || m_anns.at(i).type != 4) continue;
+        if (m_anns.at(i).text != group) continue;
+        out["page"] = m_anns.at(i).page;
+        out["x"] = m_anns.at(i).rect.center().x();
+        out["y"] = m_anns.at(i).rect.center().y();
+        return out;
+    }
+    return out;
+}
+
 void AnnotationStore::flipHairpin(int index)
 {
     if (index < 0 || index >= m_anns.size()) return;

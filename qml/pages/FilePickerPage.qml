@@ -4,7 +4,9 @@ import Qt.labs.folderlistmodel 2.1
 
 Page {
     id: page
-    property string folder: settings.lastOpenDir.length > 0 ? settings.lastOpenDir : StandardPaths.home
+    property var places: settings.storageDirs()
+    property string folder: settings.lastOpenDir.length > 0 && settings.dirExists(settings.lastOpenDir)
+                            ? settings.lastOpenDir : StandardPaths.home
     property string search: ""
 
     SilicaListView {
@@ -31,6 +33,26 @@ Page {
                 color: Theme.secondaryColor
                 font.pixelSize: Theme.fontSizeExtraSmall
                 truncationMode: TruncationMode.Fade
+            }
+            Row {
+                x: Theme.horizontalPageMargin
+                spacing: Theme.paddingSmall
+                Repeater {
+                    model: page.places
+                    Rectangle {
+                        width: plab.width + Theme.paddingLarge
+                        height: plab.height + Theme.paddingSmall
+                        radius: 6
+                        color: page.folder === modelData.path ? "#0088cd" : Qt.rgba(1, 1, 1, 0.12)
+                        Label { id: plab; anchors.centerIn: parent; text: modelData.name
+                            color: "white"; font.pixelSize: Theme.fontSizeExtraSmall }
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: { page.search = ""; page.folder = modelData.path
+                                         settings.lastOpenDir = modelData.path }
+                        }
+                    }
+                }
             }
         }
 

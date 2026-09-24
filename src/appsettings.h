@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QSettings>
 #include <QString>
+#include <QVariantList>
 
 class AppSettings : public QObject
 {
@@ -42,6 +43,9 @@ public:
     void setTextEncoding(const QString &e);
     int textFontSize() const;
     void setTextFontSize(int n);
+
+    Q_INVOKABLE QVariantList storageDirs() const;   // [{name, path}] of usable start folders
+    Q_INVOKABLE bool dirExists(const QString &path) const;
 
     Q_INVOKABLE int lastPage(const QString &docPath) const;
     Q_INVOKABLE void setLastPage(const QString &docPath, int page);

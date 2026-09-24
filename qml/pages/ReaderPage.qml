@@ -54,6 +54,25 @@ Page {
         else { reader.zoomBeforeFit = reader.zoom; reader.zoom = 1.0 }
     }
     function fitPage() { reader.zoom = (reader.height / pointsH()) / (reader.width / pointsW()) }
+    property int pendingLink: -1
+    function placeLink(fx, fy) {
+        if (reader.pendingLink < 0) {
+            var g = anns.nextLinkGroup()
+            anns.addLink(reader.currentPage, fx, fy, reader.annColor, g)
+            reader.pendingLink = g
+            reader.showNotice("Link start set - now tap the target")
+        } else {
+            anns.addLink(reader.currentPage, fx, fy, reader.annColor, reader.pendingLink)
+            reader.pendingLink = -1
+            reader.showNotice("Link done - tap a circle to jump")
+        }
+        annCanvas.requestPaint()
+    }
+    function followLink(idx) {
+        var p = anns.linkPartner(idx)
+        if (p && p.page > 0) reader.goToPage(p.page)
+        else reader.showNotice("This link has no target yet")
+    }
     function showNotice(t) { reader.notice = t; noticeTimer.restart() }
     Timer { id: noticeTimer; interval: 4000; onTriggered: reader.notice = "" }
     Timer { id: zoomSettle; interval: 250; onTriggered: reader.renderZoom = reader.zoom }
@@ -191,6 +210,10 @@ Page {
                                 if (a.text === "d") { ctx.moveTo(x1, yt); ctx.lineTo(x0, ym); ctx.lineTo(x1, yb) }
                                 else { ctx.moveTo(x0, yt); ctx.lineTo(x1, ym); ctx.lineTo(x0, yb) }
                                 ctx.stroke()
+                            } else if (a.type === 4) {
+                                ctx.beginPath()
+                                ctx.ellipse(px(ax + dx), py(ay + dy), px(a.w) * ssx, py(a.h) * ssy)
+                                ctx.fill()
                             }
                             ctx.restore()
                         }
@@ -234,6 +257,17 @@ Page {
                             for (var i = 0; i < list.length; ++i) if (list[i].index === idx) return list[i]
                             return null
                         }
+                        function hitLink(fx, fy) {
+                            var list = anns.forPage(reader.currentPage)
+                            var m = 0.02, best = -1
+                            for (var i = 0; i < list.length; ++i) {
+                                if (list[i].type !== 4) continue
+                                var b = bbox(list[i])
+                                if (fx >= b.x - m && fx <= b.x + b.w + m && fy >= b.y - m && fy <= b.y + b.h + m)
+                                    best = list[i].index
+                            }
+                            return best
+                        }
                         function hit(fx, fy) {
                             var list = anns.forPage(reader.currentPage)
                             var m = 0.03, best = -1
@@ -264,6 +298,8 @@ Page {
                                     annCanvas.editScaleX = 1; annCanvas.editScaleY = 1
                                     fx = rx; fy = ry
                                     annCanvas.drawing = true
+                                } else if (reader.tool === 8) {
+                                    reader.placeLink(rx, ry)
                                 } else if (reader.tool === 2) {
                                     reader.pickDynamic(rx, ry)
                                 } else if (reader.tool === 3 && annCanvas.hit(rx, ry) >= 0
@@ -349,6 +385,11 @@ Page {
                 MouseArea {
                     anchors.fill: parent
                     enabled: !reader.annotate
+                    onClicked: {
+                        var p = mapToItem(pageImg, mouse.x, mouse.y)
+                        var lk = annCanvas.hitLink(p.x / pageImg.width, p.y / pageImg.height)
+                        if (lk >= 0) reader.followLink(lk)
+                    }
                     onDoubleClicked: {
                         var p = mapToItem(reader, mouse.x, mouse.y)
                         if (p.x > reader.width * 2 / 3) reader.goToPage(reader.currentPage + 1)
@@ -616,6 +657,14 @@ Page {
                     Label { id: tl; anchors.centerIn: parent; text: modelData; color: "white"; font.pixelSize: Theme.fontSizeTiny }
                     MouseArea { anchors.fill: parent; onClicked: reader.tool = index }
                 }
+            }
+            Rectangle {
+                width: lkl.width + Theme.paddingMedium
+                height: lkl.height + Theme.paddingMedium
+                radius: 5
+                color: reader.tool === 8 ? "#0088cd" : "#555"
+                Label { id: lkl; anchors.centerIn: parent; text: "Link"; color: "white"; font.pixelSize: Theme.fontSizeTiny }
+                MouseArea { anchors.fill: parent; onClicked: { reader.tool = 8; reader.pendingLink = -1 } }
             }
             Rectangle {
                 width: cl.width + Theme.paddingMedium

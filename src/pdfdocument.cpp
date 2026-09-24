@@ -1,6 +1,13 @@
 #include "pdfdocument.h"
 #include <poppler-qt5.h>
 #include <QUrl>
+
+// poppler-qt6 returns std::unique_ptr where poppler-qt5 returned raw pointers.
+#if QT_VERSION_MAJOR >= 6
+#  define NSR_TAKE(expr) ((expr).release())
+#else
+#  define NSR_TAKE(expr) (expr)
+#endif
 #include <QFileInfo>
 #include <QFile>
 #include <QTextStream>
@@ -66,6 +73,7 @@ void PdfDocument::setSource(const QString &s)
 {
     QString path = s;
     if (path.startsWith("file://")) path = QUrl(path).toLocalFile();
+    // Android hands out content:// URIs from the system picker; keep them as-is
     if (path == m_source) return;
     m_source = path;
     emit sourceChanged();
@@ -76,8 +84,18 @@ void PdfDocument::load()
 {
     clear();
     ++m_generation;
-    if (m_source.isEmpty() || !QFileInfo(m_source).exists()) { emit loadedChanged(); return; }
-    m_doc = Poppler::Document::load(m_source);
+    if (m_source.isEmpty()) { emit loadedChanged(); return; }
+    if (m_source.startsWith("content://")) {
+        // Not a filesystem path: read the bytes (Qt maps content URIs to QFile) and load those.
+        QFile f(m_source);
+        if (!f.open(QIODevice::ReadOnly)) { emit loadedChanged(); return; }
+        const QByteArray data = f.readAll();
+        f.close();
+        m_doc = NSR_TAKE(Poppler::Document::loadFromData(data));
+    } else {
+        if (!QFileInfo(m_source).exists()) { emit loadedChanged(); return; }
+        m_doc = NSR_TAKE(Poppler::Document::load(m_source));
+    }
     if (!m_doc) { emit loadedChanged(); return; }
     if (m_doc->isLocked()) {
         m_locked = true;
@@ -111,7 +129,7 @@ QImage PdfDocument::renderPage(int page, qreal scale, int rotation, bool inverte
     QImage *hit = m_imgCache.object(key);
     if (hit) { renderLog("HIT  page=" + QString::number(page) + " key=" + key); return *hit; }
     renderLog("MISS page=" + QString::number(page) + " key=" + key);
-    Poppler::Page *p = m_doc->page(page - 1);
+    Poppler::Page *p = NSR_TAKE(m_doc->page(page - 1));
     if (!p) return QImage();
     qreal dpi = 72.0 * scale;
     Poppler::Page::Rotation rot = Poppler::Page::Rotate0;
@@ -143,7 +161,7 @@ QSizeF PdfDocument::pageSizePoints(int page, int rotation)
 {
     QMutexLocker lock(&m_mutex);
     if (!m_doc || page < 1 || page > m_pageCount) return QSizeF();
-    Poppler::Page *p = m_doc->page(page - 1);
+    Poppler::Page *p = NSR_TAKE(m_doc->page(page - 1));
     if (!p) return QSizeF();
     QSizeF s = p->pageSizeF();
     delete p;
@@ -156,7 +174,7 @@ QString PdfDocument::textForPage(int page)
     QMutexLocker lock(&m_mutex);
     if (!m_doc || page < 1 || page > m_pageCount) return QString();
     if (m_textCache.contains(page)) return m_textCache.value(page);
-    Poppler::Page *p = m_doc->page(page - 1);
+    Poppler::Page *p = NSR_TAKE(m_doc->page(page - 1));
     if (!p) return QString();
     QString t = p->text(QRectF());
     delete p;

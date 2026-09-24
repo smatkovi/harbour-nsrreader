@@ -1,5 +1,7 @@
 #include "appsettings.h"
 #include <QCryptographicHash>
+#include <QDir>
+#include <QStandardPaths>
 
 AppSettings::AppSettings(QObject *parent) : QObject(parent) {}
 
@@ -15,6 +17,43 @@ void AppSettings::setAutoFitWidth(bool b)
 {
     if (b == autoFitWidth()) return;
     m_s.setValue("autoFitWidth", b); m_s.sync(); emit changed();
+}
+
+static void addDir(QVariantList &out, const QString &name, const QString &path)
+{
+    if (path.isEmpty()) return;
+    QDir d(path);
+    if (!d.exists()) return;
+    const QString abs = d.absolutePath();
+    for (int i = 0; i < out.size(); ++i)
+        if (out.at(i).toMap().value("path").toString() == abs) return;
+    QVariantMap m;
+    m["name"] = name;
+    m["path"] = abs;
+    out << m;
+}
+
+QVariantList AppSettings::storageDirs() const
+{
+    QVariantList out;
+    addDir(out, "Documents", QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation));
+    addDir(out, "Downloads", QStandardPaths::writableLocation(QStandardPaths::DownloadLocation));
+    addDir(out, "Home", QStandardPaths::writableLocation(QStandardPaths::HomeLocation));
+    addDir(out, "Internal", "/sdcard");
+    // removable media
+    QDir storage("/storage");
+    const QStringList entries = storage.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+    for (int i = 0; i < entries.size(); ++i) {
+        const QString e = entries.at(i);
+        if (e == "emulated" || e == "self") continue;
+        addDir(out, e, "/storage/" + e);
+    }
+    return out;
+}
+
+bool AppSettings::dirExists(const QString &path) const
+{
+    return !path.isEmpty() && QDir(path).exists();
 }
 
 static QString keyFor(const QString &docPath)

@@ -1,6 +1,6 @@
 Name:       harbour-nsrreader
 Summary:    NSR Reader - PDF viewer for musicians
-Version:    0.28.0
+Version:    0.30.0
 Release:    1
 License:    GPLv3
 URL:        https://github.com/smatkovi/harbour-nsrreader
